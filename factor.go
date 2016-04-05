@@ -6,7 +6,7 @@
 
 * Creation Date : 03-26-2016
 
-* Last Modified : Mon Mar 28 15:22:58 2016
+* Last Modified : Tue Apr  5 15:16:56 2016
 
 * Created By : Kiyor
 
@@ -22,7 +22,7 @@ import (
 	"strings"
 )
 
-var supportMethodList = []string{"exist", "not exist", "include", "not include", "match", "not match", "regex match", "regex not match", "output", "show"}
+var supportMethodList = []string{"exist", "not exist", "include", "not include", "match", "not match", "regex match", "regex not match", "show", "show if exist"}
 
 type Factor struct {
 	sub    string
@@ -64,10 +64,12 @@ func (f *Factor) Pass() (string, bool, error) {
 		return "", sub == obj, nil
 	case "not match":
 		return "", sub != obj, nil
-	case "output", "show":
+	case "show":
 		if sub == "nil" {
 			return sub, false, nil
 		}
+		return sub, true, nil
+	case "show if exist":
 		return sub, true, nil
 	case "regex match":
 		re, err := regexp.Compile(obj)
