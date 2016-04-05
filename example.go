@@ -20,7 +20,7 @@ func ExampleConfig() []*Config {
 	requestHeader := make(map[string]string)
 	requestHeader["X-Debug"] = "true"
 
-	request := &Request{
+	request := Request{
 		Hostname:    "a.com",
 		Uri:         "/b",
 		UserAgent:   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.87 Safari/537.36",
@@ -41,7 +41,7 @@ func ExampleConfig() []*Config {
 		Option: []string{"ignore case"},
 	})
 
-	requirement := &Requirement{
+	requirement := Requirement{
 		StatusCode: 200,
 		Include:    []string{"template"},
 		Header:     requirementHeader,

@@ -6,7 +6,7 @@
 
 * Creation Date : 03-25-2016
 
-* Last Modified : Mon Mar 28 16:00:08 2016
+* Last Modified : Tue Apr  5 16:09:58 2016
 
 * Created By : Kiyor
 
@@ -45,8 +45,8 @@ func toJson(i interface{}) string {
 type Config struct {
 	file        string
 	Hash        string `,omitempty`
-	Request     *Request
-	Requirement *Requirement
+	Request     Request
+	Requirement Requirement
 }
 
 type Request struct {
@@ -256,14 +256,34 @@ func doCheck(file string, configChan chan *Config, results chan *Result, wg *syn
 	check := func(c *Config) {
 		if len(ips) == 0 {
 			Logger.Notice("put", c.Title(), "to queue")
-			wg.Add(1)
-			configChan <- c
+			if c.Request.Scheme == "both" {
+				c1 := *c
+				c2 := *c
+				wg.Add(2)
+				c1.Request.Scheme = "http"
+				c2.Request.Scheme = "https"
+				configChan <- &c1
+				configChan <- &c2
+			} else {
+				wg.Add(1)
+				configChan <- c
+			}
 		} else {
 			for _, ip := range ips {
 				c.Request.testIp = ip
 				Logger.Notice("put", c.Title(), "to queue")
-				wg.Add(1)
-				configChan <- c
+				if c.Request.Scheme == "both" {
+					c1 := *c
+					c2 := *c
+					wg.Add(2)
+					c1.Request.Scheme = "http"
+					c2.Request.Scheme = "https"
+					configChan <- &c1
+					configChan <- &c2
+				} else {
+					wg.Add(1)
+					configChan <- c
+				}
 			}
 		}
 	}
