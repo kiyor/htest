@@ -1,0 +1,10 @@
+- hash: gzip
+  request:
+    header:
+      Accept-Encoding: gzip, deflate, sdch
+  requirement:
+    header:
+      Content-Encoding:
+      - method: match
+        obj: gzip
+      - method: show if exist
