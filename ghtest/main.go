@@ -6,7 +6,7 @@
 
 * Creation Date : 03-26-2016
 
-* Last Modified : Tue Mar 29 18:00:48 2016
+* Last Modified : Tue Apr  5 16:19:37 2016
 
 * Created By : Kiyor
 
@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"os"
 	"runtime"
+	"strings"
 )
 
 var (
@@ -94,5 +95,6 @@ func main() {
 			}
 		}
 	}()
-	htest.DoCheck(*flagConfig, results, *flagIp)
+	ips := strings.Split(*flagIp, ",")
+	htest.DoCheck(*flagConfig, results, ips...)
 }

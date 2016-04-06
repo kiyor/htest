@@ -324,7 +324,9 @@ func doCheck(file string, configChan chan *Config, results chan *Result, wg *syn
 		for _, in := range config.Requirement.Include {
 			if template, ok := TemplateMap[in]; ok {
 				for k, v := range template.Requirement.Header {
-					newRequirementHeader[k] = v
+					for _, v1 := range v {
+						newRequirementHeader[k] = append(newRequirementHeader[k], v1)
+					}
 				}
 			}
 		}
