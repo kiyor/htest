@@ -18,7 +18,7 @@ template格式如下:
       - method: show if exist
 ```
 
-其中hash的test为id, 可以被config中调用
+其中hash的gzip为id, 可以被config中调用
 
 这个配置包括了gzip检查并添加了`Cache-Control`检查
 config格式如下:
