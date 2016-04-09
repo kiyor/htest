@@ -1,4 +1,51 @@
-常规使用方式
+## Update:
+
+- 新增功能04-08-2016:
+
+config中可以在配置中定义临时模板, 使用方法如下:
+
+```yml
+- hash: gzip
+  request:
+    header:
+      Accept-Encoding: gzip, deflate, sdch
+  requirement:
+    header:
+      Content-Encoding:
+      - method: match
+        obj: gzip
+      - method: show if exist
+- hash: https://github.com
+  request:
+    hostname: github.com
+    uri: /
+    method: GET
+    scheme: https
+    useragent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36
+      (KHTML, like Gecko) Chrome/49.0.2623.87 Safari/537.36
+    keepalive: false
+    skiptls: true
+    compression: false
+    timeout: 30s
+    include:
+    - gzip
+    header:
+      Cache-Control: max-age=0
+  requirement:
+    statuscode: 200
+    include:
+    - gzip
+    header:
+      Cache-Control:
+      - obj: no-cache
+        method: include
+        option:
+        - ignore case
+```
+
+当找不到测试的hostname并且hash不为空时程序自动认为次配置为本文件可使用模板, 之后在同一文件内可以调动例如`${filename}:gzip`或者`gzip`
+
+## 常规使用方式:
 
 - 新建 config 和 template 文件夹
 

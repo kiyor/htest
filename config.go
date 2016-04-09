@@ -6,7 +6,7 @@
 
 * Creation Date : 03-25-2016
 
-* Last Modified : Tue Apr  5 16:09:58 2016
+* Last Modified : Fri Apr  8 17:33:53 2016
 
 * Created By : Kiyor
 
@@ -35,6 +35,7 @@ var (
 	TemplateMap = make(map[string]*Config)
 	RawResp     bool
 	ShowCurl    bool
+	templateMux = new(sync.Mutex)
 )
 
 func toJson(i interface{}) string {
@@ -118,21 +119,22 @@ func LoadTemplate(path string) {
 		return nil
 	})
 }
+func saveTemplate(c *Config, prefix string) {
+	if len(c.Hash) == 0 {
+		Logger.Warning("Template will only load the config with hash", c.Title())
+	} else {
+		if _, ok := TemplateMap[prefix+c.Hash]; ok {
+			Logger.Warning("Template already loaded, ignore", c.Title())
+		} else {
+			templateMux.Lock()
+			TemplateMap[c.Hash] = c
+			templateMux.Unlock()
+		}
+	}
+}
 func loadTemplate(file string) {
 	var config Config
 	var configs []*Config
-
-	load := func(c *Config) {
-		if len(c.Hash) == 0 {
-			Logger.Warning("Template will only load the config with hash", c.Title())
-		} else {
-			if _, ok := TemplateMap[c.Hash]; ok {
-				Logger.Warning("Template already loaded, ignore", c.Title())
-			} else {
-				TemplateMap[c.Hash] = c
-			}
-		}
-	}
 
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
@@ -147,12 +149,12 @@ func loadTemplate(file string) {
 
 	// config is a single config
 	if err1 == nil {
-		load(&config)
+		saveTemplate(&config, "")
 	}
 	// config is a list of config
 	if err2 == nil {
 		for _, c := range configs {
-			load(c)
+			saveTemplate(c, "")
 		}
 	}
 }
@@ -254,6 +256,10 @@ func doCheck(file string, configChan chan *Config, results chan *Result, wg *syn
 	var configs []*Config
 
 	check := func(c *Config) {
+		if len(c.Hash) != 0 && len(c.Request.Hostname) == 0 {
+			saveTemplate(c, file+":")
+			return
+		}
 		if len(ips) == 0 {
 			Logger.Notice("put", c.Title(), "to queue")
 			if c.Request.Scheme == "both" {
@@ -297,7 +303,7 @@ func doCheck(file string, configChan chan *Config, results chan *Result, wg *syn
 	err2 := yaml.Unmarshal(b, &configs)
 
 	if err1 != nil && err2 != nil {
-		Logger.Error(file, err1.Error(), err2.Error())
+		Logger.Error(file, err1.Error(), "\n", err2.Error())
 		return
 	}
 
@@ -305,9 +311,16 @@ func doCheck(file string, configChan chan *Config, results chan *Result, wg *syn
 		requestHeader := config.Request.Header
 		newRequestHeader := make(map[string]string)
 		for _, in := range config.Request.Include {
-			if template, ok := TemplateMap[in]; ok {
+			localIn := file + ":" + in
+			if template, ok := TemplateMap[localIn]; ok {
 				for k, v := range template.Request.Header {
 					newRequestHeader[k] = v
+				}
+			} else {
+				if template, ok := TemplateMap[in]; ok {
+					for k, v := range template.Request.Header {
+						newRequestHeader[k] = v
+					}
 				}
 			}
 		}
@@ -322,10 +335,19 @@ func doCheck(file string, configChan chan *Config, results chan *Result, wg *syn
 
 		// include from template
 		for _, in := range config.Requirement.Include {
-			if template, ok := TemplateMap[in]; ok {
+			localIn := file + ":" + in
+			if template, ok := TemplateMap[localIn]; ok {
 				for k, v := range template.Requirement.Header {
 					for _, v1 := range v {
 						newRequirementHeader[k] = append(newRequirementHeader[k], v1)
+					}
+				}
+			} else {
+				if template, ok := TemplateMap[in]; ok {
+					for k, v := range template.Requirement.Header {
+						for _, v1 := range v {
+							newRequirementHeader[k] = append(newRequirementHeader[k], v1)
+						}
 					}
 				}
 			}
