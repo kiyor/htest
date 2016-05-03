@@ -6,7 +6,7 @@
 
 * Creation Date : 03-25-2016
 
-* Last Modified : Fri Apr  8 17:33:53 2016
+* Last Modified : Fri Apr 15 13:15:50 2016
 
 * Created By : Kiyor
 
@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -251,46 +252,84 @@ func DoCheck(path string, results chan *Result, ips ...string) {
 	time.Sleep(1 * time.Second)
 }
 
+func cleanConfig(c *Config, ips ...string) []*Config {
+	var res []*Config
+
+	if len(ips) != 0 {
+		for _, ip := range ips {
+			newc := *c
+			newc.Request.testIp = ip
+			res = append(res, &newc)
+		}
+		ips = []string{}
+		var res2 []*Config
+		for _, v := range res {
+			res2 = append(res2, cleanConfig(v)...)
+		}
+		return res2
+	}
+
+	if c.Request.Scheme == "both" {
+		c1 := *c
+		c2 := *c
+		c1.Request.Scheme = "http"
+		c2.Request.Scheme = "https"
+		var res2 []*Config
+		res2 = append(res2, cleanConfig(&c1)...)
+		res2 = append(res2, cleanConfig(&c2)...)
+		return res2
+	}
+
+	if strings.Contains(c.Request.Hostname, " ") {
+		str := c.Request.Hostname
+		for strings.Contains(str, "  ") {
+			str = strings.Replace(str, "  ", " ", -1)
+		}
+		var res2 []*Config
+		for _, v := range strings.Split(str, " ") {
+			newc := *c
+			newc.Request.Hostname = v
+			res2 = append(res2, cleanConfig(&newc)...)
+		}
+		return res2
+	}
+	if strings.Contains(c.Request.Uri, " ") {
+		str := c.Request.Uri
+		for strings.Contains(str, "  ") {
+			str = strings.Replace(str, "  ", " ", -1)
+		}
+		var res2 []*Config
+		for _, v := range strings.Split(str, " ") {
+			newc := *c
+			newc.Request.Uri = v
+			res2 = append(res2, cleanConfig(&newc)...)
+		}
+		return res2
+	}
+	if len(res) == 0 {
+		return []*Config{c}
+	}
+	return res
+}
+
 func doCheck(file string, configChan chan *Config, results chan *Result, wg *sync.WaitGroup, ips ...string) {
 	var config Config
 	var configs []*Config
+
+	sendQueue := func(c *Config) {
+		wg.Add(1)
+		configChan <- c
+	}
 
 	check := func(c *Config) {
 		if len(c.Hash) != 0 && len(c.Request.Hostname) == 0 {
 			saveTemplate(c, file+":")
 			return
 		}
-		if len(ips) == 0 {
-			Logger.Notice("put", c.Title(), "to queue")
-			if c.Request.Scheme == "both" {
-				c1 := *c
-				c2 := *c
-				wg.Add(2)
-				c1.Request.Scheme = "http"
-				c2.Request.Scheme = "https"
-				configChan <- &c1
-				configChan <- &c2
-			} else {
-				wg.Add(1)
-				configChan <- c
-			}
-		} else {
-			for _, ip := range ips {
-				c.Request.testIp = ip
-				Logger.Notice("put", c.Title(), "to queue")
-				if c.Request.Scheme == "both" {
-					c1 := *c
-					c2 := *c
-					wg.Add(2)
-					c1.Request.Scheme = "http"
-					c2.Request.Scheme = "https"
-					configChan <- &c1
-					configChan <- &c2
-				} else {
-					wg.Add(1)
-					configChan <- c
-				}
-			}
+		cs := cleanConfig(c, ips...)
+		// 		Logger.Error(len(cs))
+		for _, v := range cs {
+			sendQueue(v)
 		}
 	}
 
