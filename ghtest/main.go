@@ -6,7 +6,7 @@
 
 * Creation Date : 03-26-2016
 
-* Last Modified : Tue Apr  5 16:19:37 2016
+* Last Modified : Tue May 24 16:39:32 2016
 
 * Created By : Kiyor
 
@@ -38,10 +38,18 @@ var (
 	flagCheckOnly     *bool   = flag.Bool("check", false, "check config file only")
 	flagNewConfig     *string = flag.String("new", "http://a.com/b", "create new config")
 	flagCurl          *bool   = flag.Bool("curl", false, "output curl command")
+	flagVersion       *bool   = flag.Bool("v", false, "print version and exist")
+
+	VER       = "1.0"
+	buildtime string
 )
 
 func init() {
 	flag.Parse()
+	if *flagVersion {
+		fmt.Printf("%v.%v", VER, buildtime)
+		os.Exit(0)
+	}
 	htest.Logger = golib.NewLogger(&golib.LogOptions{
 		Name:      "htest",
 		ShowErr:   true,

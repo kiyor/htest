@@ -6,7 +6,7 @@
 
 * Creation Date : 03-25-2016
 
-* Last Modified : Fri Apr 15 13:15:50 2016
+* Last Modified : Fri Jun  3 17:24:07 2016
 
 * Created By : Kiyor
 
@@ -443,7 +443,8 @@ func (c *Config) Do() (*http.Response, error) {
 	}
 	Logger.Notice("start", c.Title())
 
-	return client.Do(req)
+	// 	return client.Do(req)
+	return client.Transport.RoundTrip(req)
 }
 
 func output(resp *http.Response) string {
@@ -541,6 +542,9 @@ func (c *Config) Curl() string {
 	if c.Request.SkipTls {
 		out += " -k"
 	}
+	if c.Request.KeepAlive {
+		out += " --keepalive-time 30"
+	}
 	out += fmt.Sprintf(" -X %s", c.Request.Method)
 	out += fmt.Sprintf(" -H Host:%s", c.Request.Hostname)
 	out += fmt.Sprintf(" -A '%s'", c.Request.UserAgent)
@@ -563,11 +567,31 @@ func (r *Result) String() string {
 			out += color.Sprintf("@{r}- [✗] %s@{|}\n", v)
 		}
 	}
+	list1, list2 := []string{}, []string{}
 	for _, v := range r.Pass {
-		out += color.Sprintf("@{g}- [✓] %s@{|}\n", v)
+		list1 = append(list1, v)
 	}
 	for _, v := range r.NotPass {
+		list2 = append(list2, v)
+	}
+	sort.Strings(list1)
+	sort.Strings(list2)
+	// 	var i int
+	for _, v := range list1 {
+		// 		i++
+		// 		if v[:1] != " " {
+		// 			out += color.Sprintf("@{g}- [✓] %2d. %s@{|}\n", i, v)
+		// 		} else {
+		out += color.Sprintf("@{g}- [✓] %s@{|}\n", v)
+		// 		}
+	}
+	for _, v := range list2 {
+		// 		i++
+		// 		if v[:1] != " " {
+		// 			out += color.Sprintf("@{r}- [✗] %2d. %s@{|}\n", i, v)
+		// 		} else {
 		out += color.Sprintf("@{r}- [✗] %s@{|}\n", v)
+		// 		}
 	}
 	return out
 }
