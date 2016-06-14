@@ -6,7 +6,7 @@
 
 * Creation Date : 03-26-2016
 
-* Last Modified : Sat Mar 26 18:39:28 2016
+* Last Modified : Mon Jun 13 11:59:37 2016
 
 * Created By : Kiyor
 
@@ -31,7 +31,6 @@ func NewHTTransport(c *Config) *HTTransport {
 	if c.Request.KeepAlive {
 		keepalive = time.Duration(30 * time.Second)
 	}
-	// 	urlProxy, _ := url.Parse(fmt.Sprintf("%s://%s", c.Request.Scheme, c.Request.testIp))
 
 	var tr HTTransport
 	tr.Transport = &http.Transport{
@@ -40,8 +39,9 @@ func NewHTTransport(c *Config) *HTTransport {
 		DisableKeepAlives:  !c.Request.KeepAlive,
 		Dial: (&net.Dialer{
 			KeepAlive: keepalive,
+			Timeout:   c.Request.timeout,
 		}).Dial,
-		// 		Proxy: http.ProxyURL(urlProxy),
+		ResponseHeaderTimeout: c.Request.timeout,
 	}
 	tr.config = c
 
@@ -53,14 +53,12 @@ func (c *HTTransport) RoundTrip(req *http.Request) (resp *http.Response, err err
 	if t == nil {
 		t = http.DefaultTransport
 	}
-	// 	t1 := time.Now()
 	resp, err = t.RoundTrip(req)
 	if err != nil {
 		return
 	}
 	switch resp.StatusCode {
 	case http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther, http.StatusTemporaryRedirect:
-		// 		Logger.Error("not support 301/302 verify", c.config.Request.testIp, c.config.Request.Hostname, time.Since(t1), resp.Header.Get("Location"))
 	}
 	return
 }

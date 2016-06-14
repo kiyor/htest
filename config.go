@@ -63,6 +63,7 @@ type Request struct {
 	SkipTls     bool
 	Compression bool
 	Timeout     string
+	timeout     time.Duration
 	Include     []string `,omitempty`
 	Header      map[string]string
 }
@@ -419,16 +420,18 @@ func doCheck(file string, configChan chan *Config, results chan *Result, wg *syn
 }
 
 func (c *Config) Do() (*http.Response, error) {
-	client := &http.Client{
-		Transport: NewHTTransport(c),
-	}
 	var err error
 	if len(OverTimeout) > 0 {
 		c.Request.Timeout = OverTimeout
 	}
-	client.Timeout, err = time.ParseDuration(c.Request.Timeout)
+	c.Request.timeout, err = time.ParseDuration(c.Request.Timeout)
 	if err != nil {
-		client.Timeout = time.Duration(10 * time.Second)
+		c.Request.timeout = time.Duration(10 * time.Second)
+	}
+
+	client := &http.Client{
+		Transport: NewHTTransport(c),
+		Timeout:   c.Request.timeout,
 	}
 
 	req, err := http.NewRequest(c.Request.Method, c.Request.toUrl(), nil)
