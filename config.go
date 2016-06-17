@@ -6,7 +6,7 @@
 
 * Creation Date : 03-25-2016
 
-* Last Modified : Fri Jun  3 17:24:07 2016
+* Last Modified : Thu Jun 16 16:51:22 2016
 
 * Created By : Kiyor
 
@@ -15,6 +15,7 @@ _._._._._._._._._._._._._._._._._._._._._.*/
 package htest
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/wsxiaoys/terminal/color"
@@ -23,9 +24,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
+	"text/template"
 	"time"
 )
 
@@ -99,6 +102,24 @@ type Result struct {
 	Duration time.Duration
 	config   *Config
 	rawResp  *http.Response
+}
+
+func MapCopy(dst, src interface{}) {
+	dv, sv := reflect.ValueOf(dst), reflect.ValueOf(src)
+
+	for _, k := range sv.MapKeys() {
+		dv.SetMapIndex(k, sv.MapIndex(k))
+	}
+}
+
+func (r *Requirement) Copy() Requirement {
+	header := make(map[string][]*Factor)
+	MapCopy(header, r.Header)
+	return Requirement{
+		StatusCode: r.StatusCode,
+		Include:    r.Include,
+		Header:     header,
+	}
 }
 
 func LoadTemplate(path string) {
@@ -330,7 +351,8 @@ func doCheck(file string, configChan chan *Config, results chan *Result, wg *syn
 		cs := cleanConfig(c, ips...)
 		// 		Logger.Error(len(cs))
 		for _, v := range cs {
-			sendQueue(v)
+			n := v.fixFactorObj()
+			sendQueue(n)
 		}
 	}
 
@@ -417,6 +439,45 @@ func doCheck(file string, configChan chan *Config, results chan *Result, wg *syn
 		}
 
 	}
+}
+
+// fix and return new config
+// this func is ugly but work, need clean later
+// missunderstanding on address copy
+func (config *Config) fixFactorObj() *Config {
+	newconfig := new(Config)
+	*newconfig = *config
+	newconfig.Requirement = config.Requirement.Copy()
+	for key, v := range newconfig.Requirement.Header {
+		var newfs []*Factor
+		for _, f := range v {
+			newf := new(Factor)
+			*newf = *f
+			if strings.Contains(f.Obj, `<<`) && strings.Contains(f.Obj, `>>`) {
+				var err error
+				var doc bytes.Buffer
+
+				funcMap := template.FuncMap{
+					"rmquery": rmQuerystring,
+					"cut":     cut,
+				}
+
+				t := template.New("tmpl").Delims("<<", ">>").Funcs(funcMap)
+				t, err = t.Parse(f.Obj)
+				if err != nil {
+					Logger.Error(err.Error())
+				}
+				err = t.Execute(&doc, config)
+				if err != nil {
+					Logger.Error(err.Error())
+				}
+				newf.Obj = doc.String()
+			}
+			newfs = append(newfs, newf)
+		}
+		newconfig.Requirement.Header[key] = newfs
+	}
+	return newconfig
 }
 
 func (c *Config) Do() (*http.Response, error) {
@@ -525,6 +586,7 @@ func (c *Config) Verify(i *int, wg *sync.WaitGroup) *Result {
 		for _, factor := range v {
 			h := fmt.Sprint(val)
 			factor.sub = h[1 : len(h)-1]
+
 			if h, b, err := factor.Pass(); err == nil {
 				if b {
 					result.Pass = append(result.Pass, fmt.Sprintf("%s %s %s %s", k, factor.Method, factor.Obj, h))

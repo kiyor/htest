@@ -6,7 +6,7 @@
 
 * Creation Date : 03-26-2016
 
-* Last Modified : Tue Apr  5 15:16:56 2016
+* Last Modified : Thu Jun 16 12:37:38 2016
 
 * Created By : Kiyor
 
@@ -41,6 +41,30 @@ func SupportMethod() string {
 		out += fmt.Sprintf("- %s\n", v)
 	}
 	return out
+}
+
+func cut(left, right int, val string) string {
+	if len(val)-right >= left {
+		return val[left : len(val)-right]
+	}
+	return val
+}
+
+func rmQuerystring(name, url string) string {
+	p := strings.Split(url, "?")
+	if len(p) == 1 {
+		return url
+	}
+	newurl := p[0] + "?"
+	for _, v := range strings.Split(p[1], "&") {
+		kv := strings.Split(v, "=")
+		if kv[0] != name {
+			newurl += v + "&"
+		}
+	}
+	newurl = strings.TrimRight(newurl, "&")
+
+	return newurl
 }
 
 func (f *Factor) Pass() (string, bool, error) {

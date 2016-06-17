@@ -20,7 +20,7 @@
     - gzip
     header:
       Cache-Control:
-      - obj: no-cache
+      - obj: << no-cache >>
         method: include
         option:
         - ignore case

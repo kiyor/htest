@@ -6,7 +6,7 @@
 
 * Creation Date : 03-26-2016
 
-* Last Modified : Tue May 24 16:39:32 2016
+* Last Modified : Thu Jun 16 16:27:10 2016
 
 * Created By : Kiyor
 
@@ -20,6 +20,7 @@ import (
 	"github.com/kiyor/golib"
 	"github.com/kiyor/htest"
 	"gopkg.in/yaml.v2"
+	"log"
 	"net/url"
 	"os"
 	"runtime"
@@ -91,6 +92,8 @@ func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	htest.LoadTemplate(*flagTemplate)
+
+	log.SetFlags(log.Lshortfile)
 }
 
 func main() {
