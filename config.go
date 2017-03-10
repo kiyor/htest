@@ -291,14 +291,13 @@ func cleanConfig(c *Config, ips ...string) []*Config {
 		return res2
 	}
 
-	if c.Request.Scheme == "both" {
-		c1 := *c
-		c2 := *c
-		c1.Request.Scheme = "http"
-		c2.Request.Scheme = "https"
+	if len(strings.Split(c.Request.Scheme, " ")) > 1 {
 		var res2 []*Config
-		res2 = append(res2, cleanConfig(&c1)...)
-		res2 = append(res2, cleanConfig(&c2)...)
+		for _, v := range strings.Split(c.Request.Scheme, " ") {
+			c1 := *c
+			c1.Request.Scheme = v
+			res2 = append(res2, cleanConfig(&c1)...)
+		}
 		return res2
 	}
 
