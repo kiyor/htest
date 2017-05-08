@@ -6,7 +6,7 @@
 
 * Creation Date : 03-25-2016
 
-* Last Modified : Thu Jun 16 16:51:22 2016
+* Last Modified : Mon May  8 12:15:39 2017
 
 * Created By : Kiyor
 
@@ -17,6 +17,7 @@ package htest
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/wsxiaoys/terminal/color"
 	"gopkg.in/yaml.v2"
@@ -249,13 +250,13 @@ func verifyYaml(file string, checkTemplate bool) {
 
 }
 
-func DoCheck(path string, results chan *Result, ips ...string) {
+func DoCheck(path string, results chan *Result, ips ...string) error {
 	configChan := make(chan *Config)
 	// this wg for check, not for result output
 	wg := sync.WaitGroup{}
 	go Verifier(configChan, results, &wg)
 
-	filepath.Walk(path, func(p string, s os.FileInfo, _ error) error {
+	err := filepath.Walk(path, func(p string, s os.FileInfo, _ error) error {
 		l, _ := os.Readlink(p)
 		if len(l) > 0 {
 			p = l
@@ -265,13 +266,17 @@ func DoCheck(path string, results chan *Result, ips ...string) {
 			}
 		}
 		if !s.IsDir() && len(l) == 0 {
-			doCheck(p, configChan, results, &wg, ips...)
+			err := doCheck(p, configChan, results, &wg, ips...)
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil
 	})
 	wg.Wait()
 	time.Sleep(1 * time.Second)
+	return err
 }
 
 func cleanConfig(c *Config, ips ...string) []*Config {
@@ -333,7 +338,7 @@ func cleanConfig(c *Config, ips ...string) []*Config {
 	return res
 }
 
-func doCheck(file string, configChan chan *Config, results chan *Result, wg *sync.WaitGroup, ips ...string) {
+func doCheck(file string, configChan chan *Config, results chan *Result, wg *sync.WaitGroup, ips ...string) error {
 	var config Config
 	var configs []*Config
 
@@ -364,8 +369,9 @@ func doCheck(file string, configChan chan *Config, results chan *Result, wg *syn
 	err2 := yaml.Unmarshal(b, &configs)
 
 	if err1 != nil && err2 != nil {
-		Logger.Error(file, err1.Error(), "\n", err2.Error())
-		return
+		e := fmt.Sprint(file, err1.Error(), "\n", err2.Error())
+		Logger.Error(e)
+		return errors.New(e)
 	}
 
 	configInherit := func(config Config) *Config {
@@ -438,6 +444,7 @@ func doCheck(file string, configChan chan *Config, results chan *Result, wg *syn
 		}
 
 	}
+	return nil
 }
 
 // fix and return new config
@@ -658,4 +665,11 @@ func (r *Result) String() string {
 		// 		}
 	}
 	return out
+}
+
+func (r *Result) AllPass() bool {
+	if len(r.NotPass) > 0 {
+		return false
+	}
+	return true
 }

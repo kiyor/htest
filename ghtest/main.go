@@ -6,7 +6,7 @@
 
 * Creation Date : 03-26-2016
 
-* Last Modified : Thu Jun 16 16:27:10 2016
+* Last Modified : Mon May  8 12:17:05 2017
 
 * Created By : Kiyor
 
@@ -25,6 +25,12 @@ import (
 	"os"
 	"runtime"
 	"strings"
+)
+
+const (
+	RETURN_GOOD = iota
+	RETURN_BAD
+	RETURN_CONFIG_ERR
 )
 
 var (
@@ -98,14 +104,22 @@ func init() {
 
 func main() {
 	results := make(chan *htest.Result)
+	exit := RETURN_GOOD
 	go func() {
 		for {
 			select {
 			case r := <-results:
 				fmt.Println(r.String())
+				if !r.AllPass() {
+					exit = RETURN_BAD
+				}
 			}
 		}
 	}()
 	ips := strings.Split(*flagIp, ",")
-	htest.DoCheck(*flagConfig, results, ips...)
+	err := htest.DoCheck(*flagConfig, results, ips...)
+	if err != nil {
+		os.Exit(RETURN_CONFIG_ERR)
+	}
+	os.Exit(exit)
 }
