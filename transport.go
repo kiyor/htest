@@ -6,7 +6,7 @@
 
 * Creation Date : 03-26-2016
 
-* Last Modified : Mon Jun 13 11:59:37 2016
+* Last Modified : Mon May  8 11:59:05 2017
 
 * Created By : Kiyor
 
@@ -34,7 +34,10 @@ func NewHTTransport(c *Config) *HTTransport {
 
 	var tr HTTransport
 	tr.Transport = &http.Transport{
-		TLSClientConfig:    &tls.Config{InsecureSkipVerify: c.Request.SkipTls},
+		TLSClientConfig: &tls.Config{
+			ServerName:         c.Request.Hostname,
+			InsecureSkipVerify: c.Request.SkipTls,
+		},
 		DisableCompression: !c.Request.Compression,
 		DisableKeepAlives:  !c.Request.KeepAlive,
 		Dial: (&net.Dialer{
