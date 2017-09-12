@@ -6,7 +6,7 @@
 
 * Creation Date : 03-25-2016
 
-* Last Modified : Mon May  8 12:15:39 2017
+* Last Modified : Tue Sep 12 11:59:54 2017
 
 * Created By : Kiyor
 
@@ -70,6 +70,8 @@ type Request struct {
 	timeout     time.Duration
 	Include     []string `,omitempty`
 	Header      map[string]string
+	delay       time.Duration
+	Delay       string
 }
 
 func (r *Request) toUrl() string {
@@ -495,6 +497,10 @@ func (c *Config) Do() (*http.Response, error) {
 	if err != nil {
 		c.Request.timeout = time.Duration(10 * time.Second)
 	}
+	c.Request.delay, err = time.ParseDuration(c.Request.Delay)
+	if err != nil {
+		c.Request.delay = 0
+	}
 
 	client := &http.Client{
 		Transport: NewHTTransport(c),
@@ -512,6 +518,10 @@ func (c *Config) Do() (*http.Response, error) {
 		req.Header.Set(k, v)
 	}
 	Logger.Notice("start", c.Title())
+	if c.Request.delay > 0 {
+		Logger.Notice("delay", c.Request.Delay)
+		time.Sleep(c.Request.delay)
+	}
 
 	// 	return client.Do(req)
 	return client.Transport.RoundTrip(req)
