@@ -6,7 +6,7 @@
 
 * Creation Date : 03-25-2016
 
-* Last Modified : Tue Sep 12 11:59:54 2017
+* Last Modified : Fri Mar  9 18:49:13 2018
 
 * Created By : Kiyor
 
@@ -41,6 +41,12 @@ var (
 	RawResp     bool
 	ShowCurl    bool
 	templateMux = new(sync.Mutex)
+
+	TokenMapping = map[string]func(string) Token{
+		"ll1": func(s string) Token {
+			return &LL1{Key: strings.Split(s, ":")[1]}
+		},
+	}
 )
 
 func toJson(i interface{}) string {
@@ -53,6 +59,10 @@ type Config struct {
 	Hash        string `,omitempty`
 	Request     Request
 	Requirement Requirement
+}
+
+type Token interface {
+	Apply(*http.Request)
 }
 
 type Request struct {
@@ -72,6 +82,9 @@ type Request struct {
 	Header      map[string]string
 	delay       time.Duration
 	Delay       string
+	Token       string
+	token       Token
+	request     http.Request
 }
 
 func (r *Request) toUrl() string {
@@ -501,6 +514,12 @@ func (c *Config) Do() (*http.Response, error) {
 	if err != nil {
 		c.Request.delay = 0
 	}
+	if len(c.Request.Token) > 0 {
+		m := strings.Split(c.Request.Token, ":")[0]
+		if f, ok := TokenMapping[m]; ok {
+			c.Request.token = f(c.Request.Token)
+		}
+	}
 
 	client := &http.Client{
 		Transport: NewHTTransport(c),
@@ -517,6 +536,13 @@ func (c *Config) Do() (*http.Response, error) {
 	for k, v := range c.Request.Header {
 		req.Header.Set(k, v)
 	}
+	Logger.Warning(c.Request)
+	if c.Request.token != nil {
+		c.Request.token.Apply(req)
+	}
+
+	c.Request.request = *req
+
 	Logger.Notice("start", c.Title())
 	if c.Request.delay > 0 {
 		Logger.Notice("delay", c.Request.Delay)
@@ -633,7 +659,7 @@ func (c *Config) Curl() string {
 		out += fmt.Sprintf(" -H '%s: %s'", k, v)
 	}
 
-	out += fmt.Sprintf(" '%s://%s%s'", c.Request.Scheme, c.Request.testIp, c.Request.Uri)
+	out += fmt.Sprintf(" '%s://%s%s'", c.Request.Scheme, c.Request.testIp, c.Request.request.URL.RequestURI())
 
 	return out
 }
