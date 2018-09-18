@@ -6,7 +6,7 @@
 
 * Creation Date : 03-26-2016
 
-* Last Modified : Mon May  8 12:17:05 2017
+* Last Modified : Fri Mar  9 20:08:29 2018
 
 * Created By : Kiyor
 
@@ -17,14 +17,17 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/kiyor/golib"
-	"github.com/kiyor/htest"
-	"gopkg.in/yaml.v2"
 	"log"
 	"net/url"
 	"os"
 	"runtime"
 	"strings"
+
+	"github.com/kiyor/golib"
+	"github.com/kiyor/htest"
+	"github.com/kiyor/htest/lib/token"
+	"golang.org/x/net/proxy"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -46,10 +49,20 @@ var (
 	flagNewConfig     *string = flag.String("new", "http://a.com/b", "create new config")
 	flagCurl          *bool   = flag.Bool("curl", false, "output curl command")
 	flagVersion       *bool   = flag.Bool("v", false, "print version and exist")
+	flagSocks5        *string = flag.String("socks5", "", "use socks5 proxy")
 
 	VER       = "1.0"
 	buildtime string
 )
+
+func addToken() {
+	htest.AddToken("ll1", func(s string) htest.Token {
+		return &token.LL1{Key: strings.Split(s, ":")[1]}
+	})
+	htest.AddToken("a1", func(s string) htest.Token {
+		return &token.A1{Key: strings.Split(s, ":")[1]}
+	})
+}
 
 func init() {
 	flag.Parse()
@@ -57,6 +70,7 @@ func init() {
 		fmt.Printf("%v.%v", VER, buildtime)
 		os.Exit(0)
 	}
+	addToken()
 	htest.Logger = golib.NewLogger(&golib.LogOptions{
 		Name:      "htest",
 		ShowErr:   true,
@@ -92,6 +106,9 @@ func init() {
 		htest.VerifyYaml(*flagTemplate, true)
 		htest.VerifyYaml(*flagConfig, false)
 		os.Exit(0)
+	}
+	if len(*flagSocks5) > 0 {
+		htest.Dialer, _ = proxy.SOCKS5("tcp", *flagSocks5, nil, proxy.Direct)
 	}
 
 	htest.OverTimeout = *flagTimeout

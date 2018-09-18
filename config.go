@@ -6,7 +6,7 @@
 
 * Creation Date : 03-25-2016
 
-* Last Modified : Fri Mar  9 18:49:13 2018
+* Last Modified : Mon Mar 12 00:43:09 2018
 
 * Created By : Kiyor
 
@@ -19,7 +19,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	// 	"github.com/moul/http2curl"
 	"github.com/wsxiaoys/terminal/color"
+	"golang.org/x/net/proxy"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net/http"
@@ -42,12 +44,13 @@ var (
 	ShowCurl    bool
 	templateMux = new(sync.Mutex)
 
-	TokenMapping = map[string]func(string) Token{
-		"ll1": func(s string) Token {
-			return &LL1{Key: strings.Split(s, ":")[1]}
-		},
-	}
+	tokenMapping = map[string]func(string) Token{}
+	Dialer       proxy.Dialer
 )
+
+func AddToken(name string, t func(string) Token) {
+	tokenMapping[name] = t
+}
 
 func toJson(i interface{}) string {
 	b, _ := json.MarshalIndent(i, "", "  ")
@@ -516,7 +519,7 @@ func (c *Config) Do() (*http.Response, error) {
 	}
 	if len(c.Request.Token) > 0 {
 		m := strings.Split(c.Request.Token, ":")[0]
-		if f, ok := TokenMapping[m]; ok {
+		if f, ok := tokenMapping[m]; ok {
 			c.Request.token = f(c.Request.Token)
 		}
 	}
@@ -536,7 +539,6 @@ func (c *Config) Do() (*http.Response, error) {
 	for k, v := range c.Request.Header {
 		req.Header.Set(k, v)
 	}
-	Logger.Warning(c.Request)
 	if c.Request.token != nil {
 		c.Request.token.Apply(req)
 	}
@@ -549,7 +551,6 @@ func (c *Config) Do() (*http.Response, error) {
 		time.Sleep(c.Request.delay)
 	}
 
-	// 	return client.Do(req)
 	return client.Transport.RoundTrip(req)
 }
 
@@ -645,7 +646,7 @@ func (c *Config) Verify(i *int, wg *sync.WaitGroup) *Result {
 }
 
 func (c *Config) Curl() string {
-	out := "curl -s"
+	out := "curl -v -s"
 	if c.Request.SkipTls {
 		out += " -k"
 	}
@@ -662,6 +663,8 @@ func (c *Config) Curl() string {
 	out += fmt.Sprintf(" '%s://%s%s'", c.Request.Scheme, c.Request.testIp, c.Request.request.URL.RequestURI())
 
 	return out
+	// 	command, _ := http2curl.GetCurlCommand(&c.Request.request)
+	// 	return command.String()
 }
 
 func (r *Result) String() string {
